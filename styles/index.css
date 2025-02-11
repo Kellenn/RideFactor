@@ -2,3 +2,15 @@ body {
     height: 100vh;
     user-select: none;
 }
+
+#arc-container {
+    max-width: 550px;
+    width: 100%;
+    padding: 10px;
+}
+
+#arc svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}

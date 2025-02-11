@@ -12,7 +12,8 @@ const arcConfig = {
 const svg = d3.select('#arc')
     .append('svg')
     .attr('width', arcConfig.WIDTH)
-    .attr('height', arcConfig.HEIGHT);
+    .attr('height', arcConfig.HEIGHT)
+    .attr('viewBox', `0 0 ${arcConfig.WIDTH} ${arcConfig.HEIGHT}`);
 
 
 // Background arc (static, full arc)
