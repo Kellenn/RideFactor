@@ -4,7 +4,7 @@ const config = {
     TEMPERATURE_WEIGHT: 0.4,
     PRECIPITATION_WEIGHT: 0.4,
     WIND_WEIGHT: 0.2,
-    DAYTIME_BONUS: 0.1,
+    DAYTIME_BONUS: 0.05,
 
     // Temperature scoring configuration.
     TEMPERATURE_THRESHOLD: 0.1,
