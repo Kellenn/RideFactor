@@ -56,7 +56,7 @@ const subText = g.append('text')
     .style('opacity', 0) // Initially hidden; will fade in
     .attr('text-anchor', 'middle')
     // dy shifts the subtext downward relative to its default position.
-    .attr('dy', '12.5rem')
+    .attr('dy', '8.5em')
     .style('font-size', '1.5rem')
     .attr('transform', 'rotate(135)');
 
