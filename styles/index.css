@@ -10,7 +10,22 @@ body {
 }
 
 #arc svg {
-    width: 100%;
+    width: 100;
     height: auto;
     display: block;
+}
+
+#arc {
+    background-image: url("../assets/infinite-spinner.svg");
+    background-repeat: no-repeat;
+    background-size: 75%;
+    background-position: center;
+    /* Not true center muhaha */
+}
+
+
+#arc-text {
+    opacity: 0;
+    transition: opacity 2s;
+    -webkit-transition: opacity 2s;
 }
