@@ -12,6 +12,7 @@ function processScore(score) {
     const daytimeElement = document.querySelector("#daytime");
     const arcText = document.querySelector("#arc-text");
     const arcLoadingSvg = document.querySelector("#arc")
+    const postalCode = document.querySelector("#postal-code-input");
 
     temperatureElement.textContent = `Temperature: ${score.temperature.value}°${score.temperature.unit}`;
     precipitationElement.textContent = `Precipitation: ${score.precipitation}%`;
@@ -19,8 +20,13 @@ function processScore(score) {
     daytimeElement.textContent = `Daytime: ${score.daytime ? "Yes" : "No"}`;
     arcText.style.opacity = 1;
     arcLoadingSvg.style.backgroundImage = 'none';
+    postalCode.value = score.postalCode;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    getWeatherScore().then(processScore);
+    getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
+});
+
+document.addEventListener('change', () => {
+    getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
 });

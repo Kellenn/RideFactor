@@ -29,3 +29,11 @@ body {
     transition: opacity 2s;
     -webkit-transition: opacity 2s;
 }
+
+#postal-code {
+    max-width: 150px;
+}
+
+#postal-code-input {
+    border-radius: 10px;
+}
