@@ -9,7 +9,7 @@ const config = {
     // Temperature scoring configuration.
     TEMPERATURE_THRESHOLD: 0.1,
     IDEAL_TEMPERATURE: 70,       // Ideal temperature in degrees.
-    TEMPERATURE_STD_DEV: 10.5,     // Standard deviation for the Gaussian curve.
+    TEMPERATURE_STD_DEV: 10,     // Standard deviation for the Gaussian curve.
 
     // Precipitation scoring configuration.
     PRECIPITATION_ALPHA: 2,            // Exponent to control sensitivity.

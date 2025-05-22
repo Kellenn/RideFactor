@@ -14,10 +14,10 @@ function processScore(score) {
     const arcLoadingSvg = document.querySelector("#arc")
     const postalCode = document.querySelector("#postal-code-input");
 
-    temperatureElement.textContent = `Temperature: ${score.temperature.value}°${score.temperature.unit}`;
-    precipitationElement.textContent = `Precipitation: ${score.precipitation}%`;
-    windElement.textContent = `Wind: ${score.windSpeed}`;
-    daytimeElement.textContent = `Daytime: ${score.daytime ? "Yes" : "No"}`;
+    temperatureElement.textContent += `${score.temperature.value}°${score.temperature.unit}`;
+    precipitationElement.textContent += `${score.precipitation}%`;
+    windElement.textContent += `${score.windSpeed}`;
+    daytimeElement.textContent += `${score.daytime ? "Yes" : "No"}`;
     arcText.style.opacity = 1;
     arcLoadingSvg.style.backgroundImage = 'none';
     postalCode.value = score.postalCode;
@@ -28,5 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('change', () => {
+    reset();
     getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
 });
