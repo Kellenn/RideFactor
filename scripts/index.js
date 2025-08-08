@@ -34,6 +34,6 @@ document.addEventListener('change', () => {
 });
 
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("scripts/service-worker.js")
+    navigator.serviceWorker.register("/RideFactor/scripts/service-worker.js")
         .then(() => console.log("Service Worker registered"));
 }
