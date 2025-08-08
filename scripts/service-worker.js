@@ -1,14 +1,14 @@
 const CACHE_NAME = "ridefactor-cache";
 const ASSETS_TO_CACHE = [
-    "/index.html",
-    "/styles/index.css",
-    "/scripts/arc.js",
-    "/scripts/index.js",
-    "/scripts/scoring.js",
-    "/scripts/weather.js",
-    "/favicon.ico",
-    "/assets/icon-192x192.png",
-    "/assets/icon-512x512.png",
+    "index.html",
+    "styles/index.css",
+    "scripts/arc.js",
+    "scripts/index.js",
+    "scripts/scoring.js",
+    "scripts/weather.js",
+    "favicon.ico",
+    "assets/icon-192x192.png",
+    "assets/icon-512x512.png",
 ];
 
 // Install: cache assets
