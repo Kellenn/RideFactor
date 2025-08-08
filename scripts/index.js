@@ -1,3 +1,4 @@
+"use strict"
 /**
  * Processes the weather score by animating the score display and updating the DOM.
  * @param {Object} score - The weather score object containing temperature, precipitation,
@@ -30,3 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('change', () => {
     getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
 });
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/scripts/service-worker.js")
+        .then(() => console.log("Service Worker registered"));
+}
