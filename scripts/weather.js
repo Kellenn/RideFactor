@@ -26,6 +26,11 @@ async function getWeatherScore(postalCode) {
         }
 
         const locationData = await fetchJson(`https://nominatim.openstreetmap.org/search?format=json&country=US&postalcode=${postalCode}`);
+
+        if (locationData.length == 0) {
+            return alert("Invalid postal code!");
+        }
+        
         location = `${locationData[0].lat},${locationData[0].lon}`;
 
 
@@ -38,7 +43,7 @@ async function getWeatherScore(postalCode) {
         periods = forecastData.properties.periods;
 
     } catch (error) {
-        console.error("Error fetching weather data:", error);
+        return console.error("Error fetching weather data:", error);
     }
 
     // Step 4: Process the first three forecast periods.

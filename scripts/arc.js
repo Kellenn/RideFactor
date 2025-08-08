@@ -50,7 +50,7 @@ const scoreText = g.append('text')
     .style('font-size', '5rem')
     // Apply a counter-rotation to keep the text upright.
     .attr('transform', 'rotate(135)');
-
+    
 // Subtext displayed below the main score text (e.g., description)
 const subText = g.append('text')
     .style('opacity', 0) // Initially hidden; will fade in
@@ -106,4 +106,30 @@ function animate(scoreResult) {
                 return foregroundArc();
             };
         });
+}
+
+/**
+ * Reset all elements to the initial state.
+ */
+function reset() {
+    const temperatureElement = document.querySelector("#temperature");
+    const precipitationElement = document.querySelector("#precipitation");
+    const windElement = document.querySelector("#wind");
+    const daytimeElement = document.querySelector("#daytime");
+    const arcLoadingSvg = document.querySelector("#arc")
+
+    // Reset text elements and background image
+    temperatureElement.textContent = "Temperature: ";
+    precipitationElement.textContent = "Precipitation: ";
+    windElement.textContent = "Wind: ";
+    daytimeElement.textContent = "Daytime: ";
+    arcLoadingSvg.style.backgroundImage = '';
+
+    // Reset foreground color
+    foreground
+        .attr("fill", "#444");
+
+    // Reset score text
+    scoreText.text('');
+    subText.text('');
 }
