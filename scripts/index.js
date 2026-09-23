@@ -1,39 +1,40 @@
 "use strict"
+
+const postalCodeInput = document.querySelector("#postal-code-input");
+
 /**
- * Processes the weather score by animating the score display and updating the DOM.
- * @param {Object} score - The weather score object containing temperature, precipitation,
- *                         wind speed, and daytime information.
+ * Fetch a score for the current postal code input and render it, showing a
+ * message in place of the score if anything goes wrong.
  */
-function processScore(score) {
-    animate(score);
-
-    const temperatureElement = document.querySelector("#temperature");
-    const precipitationElement = document.querySelector("#precipitation");
-    const windElement = document.querySelector("#wind");
-    const daytimeElement = document.querySelector("#daytime");
-    const arcText = document.querySelector("#arc-text");
-    const arcLoadingSvg = document.querySelector("#arc")
-    const postalCode = document.querySelector("#postal-code-input");
-
-    temperatureElement.textContent += `${score.temperature.value}°${score.temperature.unit}`;
-    precipitationElement.textContent += `${score.precipitation}%`;
-    windElement.textContent += `${score.windSpeed}`;
-    daytimeElement.textContent += `${score.daytime ? "Yes" : "No"}`;
-    arcText.style.opacity = 1;
-    arcLoadingSvg.style.backgroundImage = 'none';
-    postalCode.value = score.postalCode;
+function requestScore() {
+    getWeatherScore(postalCodeInput.value)
+        .then(result => {
+            render(result);
+            // A blank field resolves to a located postal code; show which one.
+            postalCodeInput.value = result.postalCode;
+        })
+        .catch(error => {
+            console.error(error);
+            showError(error instanceof DisplayError ? error.message : "Something went wrong");
+        });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
-});
+initControls();
+requestScore();
 
-document.addEventListener('change', () => {
+postalCodeInput.addEventListener("change", () => {
     reset();
-    getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
+    requestScore();
 });
 
+// The PWA was removed. Unregister any service worker and drop any caches left
+// over from an earlier install, which would otherwise go on serving the build
+// they cached instead of this one.
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/RideFactor/scripts/service-worker.js")
-        .then(() => console.log("Service Worker registered"));
+    navigator.serviceWorker.getRegistrations()
+        .then(registrations => registrations.forEach(registration => registration.unregister()));
+}
+
+if ("caches" in window) {
+    caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
 }

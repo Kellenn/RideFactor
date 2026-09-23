@@ -1,39 +1,598 @@
+/* ============================================================
+   Tokens
+
+   The dark palette is the default. "Paper" is the light theme:
+   it applies to whichever layout is active, and is reached either
+   by the system preference or by an explicit choice.
+   ============================================================ */
+
+:root {
+    color-scheme: dark;
+
+    --font: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    --bg: #08080a;
+    --fg: #f2f2f4;
+    --muted: #7d7d8a;
+    --faint: #5f5f6b;
+    --line: #24242b;
+    --field-line: #2a2a32;
+
+    /* Score ramp, as unquoted RGB channels so JS can interpolate them. */
+    --stop-bad: 198 74 66;
+    --stop-mid: 201 154 62;
+    --stop-good: 94 168 116;
+
+    /* Overwritten by display.js once a score is known. */
+    --accent: rgb(var(--stop-mid));
+}
+
+/* Paper, via the system preference (unless dark was chosen explicitly). */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        color-scheme: light;
+
+        --bg: #f4f3ef;
+        --fg: #16160f;
+        --muted: #6e6d60;
+        --faint: #8d8b7e;
+        --line: #cfcabb;
+        --field-line: #c9c4b4;
+
+        /* Darkened so the accent keeps its contrast on a light ground. */
+        --stop-bad: 176 54 46;
+        --stop-mid: 150 104 26;
+        --stop-good: 52 120 78;
+    }
+}
+
+/* Paper, chosen explicitly. */
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    --bg: #f4f3ef;
+    --fg: #16160f;
+    --muted: #6e6d60;
+    --faint: #8d8b7e;
+    --line: #cfcabb;
+    --field-line: #c9c4b4;
+
+    --stop-bad: 176 54 46;
+    --stop-mid: 150 104 26;
+    --stop-good: 52 120 78;
+}
+
+/* ============================================================
+   Shell
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
 body {
-    height: 100vh;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
     user-select: none;
 }
 
-#arc-container {
-    max-width: 550px;
-    width: 100%;
-    padding: 10px;
+#app {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px 84px;
 }
 
-#arc svg {
+#panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.field {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 10px;
+    /* Generous padding and a 44px floor: the whole label is the hit area, so
+       the pin and the space around the value focus the input too. */
+    padding: 12px 10px;
+    min-height: 44px;
+    cursor: text;
+    border-bottom: 1px solid var(--field-line);
+    transition: border-color .2s;
+}
+
+.field:hover {
+    border-bottom-color: var(--faint);
+}
+
+.field:focus-within {
+    border-bottom-color: var(--accent);
+}
+
+.pin {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    pointer-events: none;
+    color: var(--muted);
+    transition: color .2s;
+}
+
+.field:focus-within .pin {
+    color: var(--accent);
+}
+
+.zip {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 400;
+    /* A real postal code is content, not a hint: it gets full contrast, and
+       --muted is kept for the placeholder. */
+    color: var(--fg);
+    background: transparent;
+    border: 0;
+    outline: none;
+    /* Wide enough for the placeholder, which is longer than any value. */
+    width: 124px;
+    padding: 0;
+    cursor: text;
+    letter-spacing: .28em;
+    user-select: text;
+}
+
+.zip::placeholder {
+    color: var(--muted);
+    letter-spacing: .18em;
+}
+
+#score {
+    font-weight: 200;
+    letter-spacing: -.05em;
+    font-variant-numeric: tabular-nums;
+    transition: opacity .3s;
+}
+
+#score-of {
+    display: none;
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--muted);
+    letter-spacing: 0;
+    margin-left: 6px;
+}
+
+#description {
+    color: var(--accent);
+    transition: opacity .3s;
+}
+
+#stats {
+    margin: 0;
+    transition: opacity .4s;
+}
+
+.stat dt {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.stat dd {
+    margin: 0;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The ring is only drawn by the Ring layout; the meter and ticks only by
+   the other two. Each layout re-enables what it needs. */
+#dial,
+#meter,
+#ticks {
+    display: none;
+}
+
+#dial svg {
     width: 100%;
-    height: auto;
+    height: 100%;
+    /* Rotates the 270-degree sweep so its gap sits at the bottom. */
+    transform: rotate(135deg);
+}
+
+#dial circle {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    /* Without this the stroke scales with the dial box, so the widths
+       display.js sets would not be the pixel widths it asks for. */
+    vector-effect: non-scaling-stroke;
+    transform-box: view-box;
+    transform-origin: 150px 150px;
+}
+
+#ring-track {
+    stroke: var(--line);
+    /* 270 of the 830 unit circumference. */
+    stroke-dasharray: 622 830;
+}
+
+#ring-progress {
+    stroke: var(--accent);
+    stroke-dasharray: 0 830;
+}
+
+#meter i {
     display: block;
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    border-radius: inherit;
 }
 
-#arc {
-    background-image: url("../assets/infinite-spinner.svg");
-    background-repeat: no-repeat;
-    background-size: 75%;
-    background-position: center;
-    /* Not true center muhaha */
+#ticks {
+    display: none;
+    justify-content: space-between;
+    margin-top: 11px;
+    font-size: 10px;
+    letter-spacing: .18em;
+    color: var(--muted);
 }
 
+/* ============================================================
+   Layout · Ring
+   ============================================================ */
 
-#arc-text {
+#app[data-layout="hairline"] #panel {
+    align-items: center;
+    text-align: center;
+}
+
+#app[data-layout="hairline"] .field {
+    align-self: center;
+    margin-bottom: 52px;
+}
+
+#app[data-layout="hairline"] .zip {
+    text-align: center;
+}
+
+#app[data-layout="hairline"] #gauge {
+    position: relative;
+    width: 400px;
+    height: 400px;
+}
+
+#app[data-layout="hairline"] #dial {
+    display: block;
+    position: absolute;
+    inset: 0;
+}
+
+#app[data-layout="hairline"] #headline {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#app[data-layout="hairline"] #score {
+    font-size: 140px;
+    line-height: .9;
+}
+
+#app[data-layout="hairline"] #description {
+    margin-top: 18px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+}
+
+#app[data-layout="hairline"] #stats {
+    display: flex;
+    gap: 58px;
+    margin-top: 62px;
+}
+
+#app[data-layout="hairline"] .stat dt {
+    margin-bottom: 9px;
+}
+
+#app[data-layout="hairline"] .stat dd {
+    font-size: 18px;
+}
+
+/* ============================================================
+   Layout · Type
+   ============================================================ */
+
+#app[data-layout="editorial"] #panel {
+    width: 100%;
+    max-width: 720px;
+}
+
+#app[data-layout="editorial"] .field {
+    margin-bottom: 24px;
+}
+
+#app[data-layout="editorial"] #headline {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+#app[data-layout="editorial"] #score {
+    font-size: 210px;
+    line-height: .82;
+    letter-spacing: -.055em;
+}
+
+#app[data-layout="editorial"] #score-of {
+    display: inline;
+}
+
+#app[data-layout="editorial"] #description {
+    font-size: 25px;
+    font-weight: 300;
+    letter-spacing: -.01em;
+    padding-bottom: 6px;
+}
+
+#app[data-layout="editorial"] #meter {
+    display: block;
+    height: 3px;
+    margin-top: 36px;
+    background: var(--line);
+}
+
+#app[data-layout="editorial"] #stats {
+    padding-top: 34px;
+}
+
+#app[data-layout="editorial"] .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+#app[data-layout="editorial"] .stat:last-child {
+    border-bottom: 0;
+}
+
+#app[data-layout="editorial"] .stat dt {
+    font-size: 11px;
+    letter-spacing: .22em;
+}
+
+#app[data-layout="editorial"] .stat dd {
+    font-size: 19px;
+}
+
+/* ============================================================
+   Layout · Bar
+   ============================================================ */
+
+#app[data-layout="bar"] #panel {
+    width: 100%;
+    max-width: 800px;
+}
+
+#app[data-layout="bar"] .field {
+    margin-bottom: 54px;
+}
+
+#app[data-layout="bar"] #headline {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 26px;
+}
+
+#app[data-layout="bar"] #score {
+    font-size: 156px;
+    line-height: .8;
+}
+
+#app[data-layout="bar"] #description {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    padding-bottom: 6px;
+}
+
+#app[data-layout="bar"] #meter {
+    display: block;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+#app[data-layout="bar"] #ticks {
+    display: flex;
+}
+
+#app[data-layout="bar"] #stats {
+    display: flex;
+    margin-top: 56px;
+    border-top: 1px solid var(--line);
+}
+
+#app[data-layout="bar"] .stat {
+    flex: 1;
+    padding-top: 26px;
+    border-right: 1px solid var(--line);
+}
+
+#app[data-layout="bar"] .stat:last-child {
+    border-right: 0;
+}
+
+#app[data-layout="bar"] .stat dt {
+    margin-bottom: 10px;
+}
+
+#app[data-layout="bar"] .stat dd {
+    font-size: 20px;
+}
+
+/* ============================================================
+   States
+   ============================================================ */
+
+#app[data-state="loading"] #description,
+#app[data-state="loading"] #stats,
+#app[data-state="error"] #stats {
     opacity: 0;
-    transition: opacity 2s;
-    -webkit-transition: opacity 2s;
 }
 
-#postal-code {
-    max-width: 150px;
+/* Held faint rather than hidden so the layout does not collapse. */
+#app[data-state="loading"] #score,
+#app[data-state="error"] #score {
+    opacity: .12;
 }
 
-#postal-code-input {
-    border-radius: 10px;
+/* Indeterminate sweep while a forecast is in flight. */
+#app[data-state="loading"] #ring-progress {
+    stroke: var(--faint);
+    stroke-dasharray: 90 830;
+    animation: ring-sweep 1.15s linear infinite;
+}
+
+@keyframes ring-sweep {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#app[data-state="loading"] #meter i {
+    width: 28%;
+    background: var(--faint);
+    animation: meter-sweep 1.3s ease-in-out infinite;
+}
+
+@keyframes meter-sweep {
+    from {
+        transform: translateX(-110%);
+    }
+
+    to {
+        transform: translateX(380%);
+    }
+}
+
+#app[data-state="error"] #description {
+    color: var(--fg);
+    opacity: .7;
+}
+
+/* ============================================================
+   Controls
+   ============================================================ */
+
+#controls {
+    position: fixed;
+    inset: auto 0 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    font-size: 10px;
+}
+
+#layouts {
+    display: flex;
+    gap: 14px;
+}
+
+#controls button {
+    font: inherit;
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    cursor: pointer;
+    transition: color .2s;
+}
+
+#controls button:hover,
+#controls button:focus-visible {
+    color: var(--fg);
+    outline: none;
+}
+
+#controls button[aria-pressed="true"] {
+    color: var(--fg);
+}
+
+/* ============================================================
+   Small screens
+   ============================================================ */
+
+@media (max-width: 640px) {
+    #app[data-layout="hairline"] #gauge {
+        width: 280px;
+        height: 280px;
+    }
+
+    #app[data-layout="hairline"] #score {
+        font-size: 98px;
+    }
+
+    #app[data-layout="hairline"] #stats {
+        gap: 24px;
+        margin-top: 52px;
+    }
+
+    #app[data-layout="editorial"] #score,
+    #app[data-layout="bar"] #score {
+        font-size: 108px;
+    }
+
+    #app[data-layout="editorial"] #description {
+        font-size: 18px;
+    }
+
+    #app[data-layout="bar"] #stats {
+        flex-wrap: wrap;
+    }
+
+    #app[data-layout="bar"] .stat {
+        flex: 0 0 50%;
+        border-right: 0;
+        padding-bottom: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    #app[data-state="loading"] #ring-progress,
+    #app[data-state="loading"] #meter i {
+        animation: none;
+    }
 }

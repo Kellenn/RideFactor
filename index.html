@@ -1,57 +1,82 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RideFactor</title>
 
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1976d2">
-
     <link rel="icon" href="favicon.ico" sizes="64x64">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,200;9..40,300;9..40,400;9..40,500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles/index.css">
 </head>
 
+<body>
+    <main id="app" data-layout="hairline" data-state="loading">
+        <div id="panel">
+            <label class="field" for="postal-code-input">
+                <svg class="pin" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path
+                        d="M8 0a5 5 0 0 0-5 5c0 3.6 4.35 10.52 4.54 10.81a.55.55 0 0 0 .92 0C8.65 15.52 13 8.6 13 5a5 5 0 0 0-5-5Zm0 7.5A2.5 2.5 0 1 1 8 2.5a2.5 2.5 0 0 1 0 5Z" />
+                </svg>
+                <input id="postal-code-input" class="zip" inputmode="numeric" pattern="[0-9]{5}" maxlength="5"
+                    autocomplete="postal-code" aria-label="Postal code">
+            </label>
 
-<body class="d-flex align-items-center justify-content-center bg-black">
-    <div class="text-center text-white">
-        <div class="position-relative mb-5 mx-auto" id="postal-code">
-            <i class="bi bi-geo-alt-fill position-absolute top-50 start-0 translate-middle-y ps-2 text-white"></i>
-            <input class="form-control ps-5 bg-dark border-dark-subtle text-white border-secondary"
-                id="postal-code-input" pattern="[0-9]{5}" autocomplete="off" placeholder="Postal Code">
-        </div>
-        <div id="arc-container" class="flex-column align-items-center">
-            <div id="arc"></div>
-
-            <div id="arc-text" class="d-flex">
-                <div class="text-start flex-fill">
-                    <h5 id="temperature">Temperature: </h5>
-                    <h5 id="precipitation">Precipitation: </h5>
+            <div id="gauge">
+                <div id="dial">
+                    <svg viewBox="0 0 300 300" aria-hidden="true">
+                        <circle id="ring-track" cx="150" cy="150" r="132" />
+                        <circle id="ring-progress" cx="150" cy="150" r="132" />
+                    </svg>
                 </div>
 
-                <div class="text-end flex-fill">
-                    <h5 id="wind">Wind: </h5>
-                    <h5 id="daytime">Daytime: </h5>
+                <div id="headline" aria-live="polite">
+                    <div id="score">&ndash;<span id="score-of">/10</span></div>
+                    <div id="description"></div>
                 </div>
             </div>
+
+            <div id="meter"><i></i></div>
+            <div id="ticks"><span>0</span><span>10</span></div>
+
+            <dl id="stats">
+                <div class="stat">
+                    <dt>Temp</dt>
+                    <dd id="temperature">&mdash;</dd>
+                </div>
+                <div class="stat">
+                    <dt>Precip.</dt>
+                    <dd id="precipitation">&mdash;</dd>
+                </div>
+                <div class="stat">
+                    <dt>Wind</dt>
+                    <dd id="wind">&mdash;</dd>
+                </div>
+                <div class="stat">
+                    <dt>Light</dt>
+                    <dd id="daytime">&mdash;</dd>
+                </div>
+            </dl>
         </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
-        integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
-        crossorigin="anonymous"></script>
-
-    <script src="https://d3js.org/d3.v6.min.js"></script>
+        <footer id="controls">
+            <div id="layouts" role="group" aria-label="Layout">
+                <button type="button" data-layout-option="hairline">Ring</button>
+                <button type="button" data-layout-option="editorial">Type</button>
+                <button type="button" data-layout-option="bar">Bar</button>
+            </div>
+            <button type="button" id="theme-toggle">Auto</button>
+        </footer>
+    </main>
 
     <script src="scripts/scoring.js"></script>
     <script src="scripts/weather.js"></script>
-    <script src="scripts/arc.js"></script>
+    <script src="scripts/display.js"></script>
     <script src="scripts/index.js"></script>
 </body>
 
