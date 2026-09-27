@@ -1,39 +1,53 @@
-"use strict"
+import { getForecast, DisplayError } from "./weather.js";
+import { rate } from "./rating.js";
+import { render, reset, showError } from "./render.js";
+import { initControls } from "./controls.js";
+import { initSettings } from "./settings.js";
+
+const postalCodeInput = document.querySelector("#postal-code-input");
+
+let forecast = null;
+let profile = null;
+
 /**
- * Processes the weather score by animating the score display and updating the DOM.
- * @param {Object} score - The weather score object containing temperature, precipitation,
- *                         wind speed, and daytime information.
+ * Score the forecast in hand against the current profile and show it.
+ *
+ * @param {Object} [options] - Passed through to render().
  */
-function processScore(score) {
-    animate(score);
-
-    const temperatureElement = document.querySelector("#temperature");
-    const precipitationElement = document.querySelector("#precipitation");
-    const windElement = document.querySelector("#wind");
-    const daytimeElement = document.querySelector("#daytime");
-    const arcText = document.querySelector("#arc-text");
-    const arcLoadingSvg = document.querySelector("#arc")
-    const postalCode = document.querySelector("#postal-code-input");
-
-    temperatureElement.textContent += `${score.temperature.value}°${score.temperature.unit}`;
-    precipitationElement.textContent += `${score.precipitation}%`;
-    windElement.textContent += `${score.windSpeed}`;
-    daytimeElement.textContent += `${score.daytime ? "Yes" : "No"}`;
-    arcText.style.opacity = 1;
-    arcLoadingSvg.style.backgroundImage = 'none';
-    postalCode.value = score.postalCode;
+function show(options) {
+    if (forecast === null) return;
+    render(rate(forecast, profile), options);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
+/**
+ * Fetch a forecast for the current postal code input and render it, showing a
+ * message in place of the score if anything goes wrong.
+ */
+function requestScore() {
+    getForecast(postalCodeInput.value)
+        .then(result => {
+            forecast = result;
+            show();
+            // A blank field resolves to a located postal code; show which one.
+            postalCodeInput.value = result.postalCode;
+        })
+        .catch(error => {
+            console.error(error);
+            showError(error instanceof DisplayError ? error.message : "Something went wrong");
+        });
+}
+
+initControls();
+
+profile = initSettings(next => {
+    profile = next;
+    show({ animate: false });
 });
 
-document.addEventListener('change', () => {
+requestScore();
+
+postalCodeInput.addEventListener("change", () => {
+    forecast = null;
     reset();
-    getWeatherScore(document.querySelector("#postal-code-input").value).then(processScore);
+    requestScore();
 });
-
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/RideFactor/scripts/service-worker.js")
-        .then(() => console.log("Service Worker registered"));
-}
