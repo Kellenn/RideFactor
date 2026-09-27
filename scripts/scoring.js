@@ -1,112 +1,162 @@
-// Configuration object for scoring weights, thresholds, and other constants.
-const config = {
-    // Weights used when combining sub-scores.
+/**
+ * The rider profile
+ *
+ * The defaults describe a rider happiest around 72°F who stops at about 50°F.
+ */
+const DEFAULT_PROFILE = {
+    idealTemperature: 72,
+    coldestRide: 50,
+    hottestRide: 95,
+    windTolerance: 25,
+    rainTolerance: 40,
+};
+
+const model = {
+    // Weights used when combining sub-scores into the base score.
     TEMPERATURE_WEIGHT: 0.4,
     PRECIPITATION_WEIGHT: 0.4,
     WIND_WEIGHT: 0.2,
-    DAYTIME_BONUS: 0.05,
 
-    // Temperature scoring configuration.
-    TEMPERATURE_THRESHOLD: 0.1,
-    IDEAL_TEMPERATURE: 70,       // Ideal temperature in degrees.
-    TEMPERATURE_STD_DEV: 10,     // Standard deviation for the Gaussian curve.
+    // Night riding is harder at any temperature
+    NIGHT_FACTOR: 0.9,
 
-    // Precipitation scoring configuration.
-    PRECIPITATION_ALPHA: 2,            // Exponent to control sensitivity.
-    PRECIPITATION_PENALTY_CUTOFF: 65,    // If pChance exceeds this, apply a penalty.
-    PRECIPITATION_PENALTY: 0.05,         // Amount to penalize precipitation score.
+    // Two spreads rather than one, since riding is not symmetric
+    TEMPERATURE_SPREAD_COLD: 13,
+    TEMPERATURE_SPREAD_HOT: 17,
 
-    // Wind scoring configuration.
-    WIND_MIN: 0,
-    WIND_MAX: 30,      // Maximum expected wind speed.
-    WIND_ALPHA: 5,     // Exponent to control wind sensitivity.
-    WIND_THRESHOLD: 40 // Wind speed above which a penalty is applied.
+    PRECIPITATION_ALPHA: 2,
+
+    // A squared falloff
+    WIND_MAX: 40,
+    WIND_ALPHA: 2,
+};
+
+// How far past a stated limit each ceiling reaches. These offsets are what
+// make a limit read as "marginal" rather than "impossible": the coldest
+// temperature you will ride scores around 4 or 5, not 0. Cold and heat use
+// different offsets for the same reason their curves use different spreads.
+const offsets = {
+    COLD_FREE: 18,    // °F above the cold limit at which cold stops mattering
+    COLD_ZERO: -15,   // °F below it at which the score is capped to zero
+    HEAT_FREE: -7,    // °F below the heat limit at which heat starts to matter
+    HEAT_ZERO: 15,
+    WIND_FREE: -7,    // mph below the wind limit at which wind starts to matter
+    WIND_ZERO: 20,
+    RAIN_FREE: 0,     // % at which rain starts to matter
+    RAIN_ZERO: 50,
 };
 
 /**
- * Compute a temperature score based on a Gaussian function.
- * The score is highest when temp is near the IDEAL_TEMPERATURE.
+ * Turn a rider profile into the curve centres and ceilings the scorer uses.
+ *
+ * @param {Object} profile - A rider profile.
+ * @returns {Object} Derived scoring configuration.
+ */
+function deriveConfig(profile) {
+    return {
+        IDEAL_TEMPERATURE: profile.idealTemperature,
+
+        COLD_CAP_FREE: profile.coldestRide + offsets.COLD_FREE,
+        COLD_CAP_ZERO: profile.coldestRide + offsets.COLD_ZERO,
+        HEAT_CAP_FREE: profile.hottestRide + offsets.HEAT_FREE,
+        HEAT_CAP_ZERO: profile.hottestRide + offsets.HEAT_ZERO,
+        WIND_CAP_FREE: profile.windTolerance + offsets.WIND_FREE,
+        WIND_CAP_ZERO: profile.windTolerance + offsets.WIND_ZERO,
+        PRECIPITATION_CAP_FREE: profile.rainTolerance + offsets.RAIN_FREE,
+        PRECIPITATION_CAP_ZERO: profile.rainTolerance + offsets.RAIN_ZERO,
+    };
+}
+
+/**
+ * Clamp a value into the 0 to 1 range.
+ *
+ * @param {number} value - The value to clamp.
+ * @returns {number} The value, held within 0 and 1.
+ */
+function clamp(value) {
+    return Math.min(Math.max(value, 0), 1);
+}
+
+/**
+ * A straight line from 0 at `zero` to 1 at `free`.
+ *
+ * @param {number} value - The measurement to place on the ramp.
+ * @param {number} zero - Value at which the ramp reaches 0.
+ * @param {number} free - Value at which the ramp reaches 1.
+ * @returns {number} A ceiling between 0 and 1.
+ */
+function ramp(value, zero, free) {
+    return clamp((value - zero) / (free - zero));
+}
+
+/**
+ * Compute a temperature score based on a Gaussian function, centred on the
+ * rider's ideal and falling away faster below it than above.
  *
  * @param {number} temp - The temperature value.
+ * @param {Object} config - Derived configuration.
  * @returns {number} A score between 0 and 1.
  */
-function getTemperatureScore(temp) {
-    // Calculate the Gaussian exponent.
-    const exponent = -0.5 * ((temp - config.IDEAL_TEMPERATURE) / config.TEMPERATURE_STD_DEV) ** 2;
+function getTemperatureScore(temp, config) {
+    const spread = temp < config.IDEAL_TEMPERATURE
+        ? model.TEMPERATURE_SPREAD_COLD
+        : model.TEMPERATURE_SPREAD_HOT;
+
+    const exponent = -0.5 * ((temp - config.IDEAL_TEMPERATURE) / spread) ** 2;
     return Math.exp(exponent);
 }
 
 /**
- * Compute a precipitation score based on the chance of precipitation.
- * The score is calculated as (1 - fraction)^alpha, with an extra penalty
- * if the chance exceeds a specified cutoff.
+ * Compute a precipitation score from the chance of precipitation, as
+ * (1 - fraction)^alpha. High chances are handled by the ceiling in
+ * calculateScore rather than by a penalty here.
  *
  * @param {number} pChance - The chance of precipitation (0 to 100).
  * @returns {number} A score between 0 and 1.
  */
 function getPrecipitationScore(pChance) {
     const fraction = pChance / 100;
-
-    let score = Math.pow(1 - fraction, config.PRECIPITATION_ALPHA);
-
-    // If the chance is too high, apply a penalty.
-    if (pChance > config.PRECIPITATION_PENALTY_CUTOFF) {
-        score = Math.max(score - config.PRECIPITATION_PENALTY, 0);
-    }
-
-    return Math.min(Math.max(score, 0), 1);
+    return clamp((1 - fraction) ** model.PRECIPITATION_ALPHA);
 }
 
 /**
  * Compute a wind score based on wind speed.
- * The score is computed as 1 - (windSpeed / WIND_MAX)^WIND_ALPHA.
  *
- * @param {number} windSpeed - The wind speed.
+ * @param {number} windSpeed - The wind speed in mph.
  * @returns {number} A score between 0 and 1.
  */
 function getWindScore(windSpeed) {
-    const fraction = (windSpeed / config.WIND_MAX) ** config.WIND_ALPHA;
-    const score = 1 - fraction;
-    return Math.min(Math.max(score, 0), 1);
+    return clamp(1 - (windSpeed / model.WIND_MAX) ** model.WIND_ALPHA);
 }
 
 /**
  * Calculate the overall weather score from the given weather data.
- * This function computes individual scores for temperature, precipitation,
- * and wind, applies weights, applies penalties if necessary, and adds a bonus
- * for daytime. The result is scaled to a 0-10 range and rounded.
  *
  * @param {Object} weather - Weather data containing temperature, precipitation,
  *                           windSpeed, and daytime properties.
+ * @param {Object} [profile] - Rider profile; the defaults if none is given.
  * @returns {number} The final weather score (0 to 10).
  */
-function calculateScore(weather) {
-    // 1. Compute sub-scores for each weather parameter.
-    const temperatureScore = getTemperatureScore(weather.temperature);
-    const precipitationScore = getPrecipitationScore(weather.precipitation);
-    const windScore = getWindScore(weather.windSpeed);
+function calculateScore(weather, profile = DEFAULT_PROFILE) {
+    const config = deriveConfig(profile);
+    
+    const precipitation = weather.precipitation ?? 0;
 
-    // 2. Combine the sub-scores using weighted sum.
-    let combinedScore =
-        temperatureScore * config.TEMPERATURE_WEIGHT +
-        precipitationScore * config.PRECIPITATION_WEIGHT +
-        windScore * config.WIND_WEIGHT;
+    const base =
+        getTemperatureScore(weather.temperature, config) * model.TEMPERATURE_WEIGHT +
+        getPrecipitationScore(precipitation) * model.PRECIPITATION_WEIGHT +
+        getWindScore(weather.windSpeed) * model.WIND_WEIGHT;
 
-    // 3. Apply penalty if temperature is too low.
-    if (temperatureScore < config.TEMPERATURE_THRESHOLD) {
-        combinedScore *= 0.25;
-    }
-    // Apply penalty if wind speed exceeds the threshold.
-    if (weather.windSpeed > config.WIND_THRESHOLD) {
-        combinedScore *= 0.25;
-    }
+    const ceiling = Math.min(
+        ramp(weather.windSpeed, config.WIND_CAP_ZERO, config.WIND_CAP_FREE),
+        ramp(weather.temperature, config.COLD_CAP_ZERO, config.COLD_CAP_FREE),
+        ramp(weather.temperature, config.HEAT_CAP_ZERO, config.HEAT_CAP_FREE),
+        ramp(precipitation, config.PRECIPITATION_CAP_ZERO, config.PRECIPITATION_CAP_FREE),
+    );
 
-    // 4. Add a bonus if the weather is during daytime.
-    if (weather.daytime) {
-        combinedScore += config.DAYTIME_BONUS;
-    }
+    const light = weather.daytime ? 1 : model.NIGHT_FACTOR;
 
-    // 5. Scale to a 0-10 range, clamp to 10, and round to the nearest integer.
-    let finalScore = Math.min(combinedScore * 10, 10);
-    return Math.round(finalScore);
+    return Math.round(Math.min(base, ceiling) * light * 10);
 }
+
+export { calculateScore, DEFAULT_PROFILE };

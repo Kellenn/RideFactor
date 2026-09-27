@@ -64,20 +64,44 @@
             </dl>
         </div>
 
+        <!-- A screen of its own rather than a drawer over the score: it takes
+             the whole viewport, names itself, and leaves by its own button.
+             tabindex lets focus move here on opening. -->
+        <section id="settings" aria-label="Rider profile" tabindex="-1" hidden>
+            <header id="settings-head">
+                <h2>Rider profile</h2>
+                <button type="button" id="settings-done">Done</button>
+            </header>
+
+            <div id="settings-body">
+                <!-- The map, always on screen: the panel's answer, kept in
+                     view while the factors beside it are tuned. -->
+                <div id="settings-pinned"></div>
+                <div id="settings-axes" role="group" aria-label="What runs up the side"></div>
+                <div id="settings-rows"></div>
+
+                <div id="settings-resets">
+                    <!-- Retitled per factor by settings.js; this matches the row it opens on. -->
+                    <button type="button" id="settings-reset">Reset temperature</button>
+                    <button type="button" id="settings-reset-all">Reset all</button>
+                </div>
+            </div>
+        </section>
+
         <footer id="controls">
             <div id="layouts" role="group" aria-label="Layout">
                 <button type="button" data-layout-option="hairline">Ring</button>
                 <button type="button" data-layout-option="editorial">Type</button>
                 <button type="button" data-layout-option="bar">Bar</button>
             </div>
-            <button type="button" id="theme-toggle">Auto</button>
+            <div id="controls-right">
+                <button type="button" id="settings-toggle" aria-controls="settings" aria-expanded="false">Tune</button>
+                <button type="button" id="theme-toggle">Auto</button>
+            </div>
         </footer>
     </main>
 
-    <script src="scripts/scoring.js"></script>
-    <script src="scripts/weather.js"></script>
-    <script src="scripts/display.js"></script>
-    <script src="scripts/index.js"></script>
+    <script type="module" src="scripts/index.js"></script>
 </body>
 
 </html>

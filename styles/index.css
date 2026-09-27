@@ -1,11 +1,3 @@
-/* ============================================================
-   Tokens
-
-   The dark palette is the default. "Paper" is the light theme:
-   it applies to whichever layout is active, and is reached either
-   by the system preference or by an explicit choice.
-   ============================================================ */
-
 :root {
     color-scheme: dark;
 
@@ -25,6 +17,13 @@
 
     /* Overwritten by display.js once a score is known. */
     --accent: rgb(var(--stop-mid));
+
+    /* Shared motion, so the sheet, the tabs and the charts all move with the
+       same weight. The curve is the ease-out the score sweep already uses:
+       quick to leave, slow to settle. */
+    --ease: cubic-bezier(.2, .8, .3, 1);
+    --fast: .18s;
+    --mid: .28s;
 }
 
 /* Paper, via the system preference (unless dark was chosen explicitly). */
@@ -61,10 +60,6 @@
     --stop-mid: 150 104 26;
     --stop-good: 52 120 78;
 }
-
-/* ============================================================
-   Shell
-   ============================================================ */
 
 * {
     box-sizing: border-box;
@@ -103,8 +98,6 @@ body {
     align-items: center;
     align-self: flex-start;
     gap: 10px;
-    /* Generous padding and a 44px floor: the whole label is the hit area, so
-       the pin and the space around the value focus the input too. */
     padding: 12px 10px;
     min-height: 44px;
     cursor: text;
@@ -137,13 +130,10 @@ body {
     font: inherit;
     font-size: 13px;
     font-weight: 400;
-    /* A real postal code is content, not a hint: it gets full contrast, and
-       --muted is kept for the placeholder. */
     color: var(--fg);
     background: transparent;
     border: 0;
     outline: none;
-    /* Wide enough for the placeholder, which is longer than any value. */
     width: 124px;
     padding: 0;
     cursor: text;
@@ -512,6 +502,7 @@ body {
 #controls {
     position: fixed;
     inset: auto 0 0 0;
+    z-index: 3;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -548,6 +539,566 @@ body {
 
 #controls button[aria-pressed="true"] {
     color: var(--fg);
+}
+
+/* ============================================================
+   Settings
+
+   A sheet above the controls. The charts reuse the score
+   ramp, so tuning is read in the same colours as the score itself.
+   ============================================================ */
+
+#controls-right {
+    display: flex;
+    gap: 14px;
+}
+
+/* A screen, not a drawer: it covers the viewport, sits above the controls,
+   and scrolls on its own. settings.js makes what is behind it inert, so the
+   score and the layout buttons cannot be reached through it. */
+#settings {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--bg);
+
+    /* Arrives rather than slides: a page appearing, not a sheet pulled up.
+       settings.js holds the element in the document for the length of it. */
+    opacity: 0;
+    transform: translateY(10px);
+    transition: transform var(--mid) var(--ease), opacity var(--mid) var(--ease);
+}
+
+#settings.is-open {
+    transform: none;
+    opacity: 1;
+}
+
+/* Focus lands here on opening, which should move the screen, not ring it. */
+#settings:focus {
+    outline: none;
+}
+
+/* Stays put while the profile scrolls under it, so the way out is always to
+   hand and the screen keeps saying what it is. */
+#settings-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* Never squeezed by the body centring itself below it. */
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 24px 26px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+}
+
+#settings-head h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--fg);
+}
+
+#settings-done {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    cursor: pointer;
+    transition: color var(--fast) var(--ease);
+}
+
+#settings-done:hover,
+#settings-done:focus-visible {
+    color: var(--fg);
+    outline: none;
+}
+
+/* Auto margins on every side: they centre the profile in whatever room is
+   left under the header, the way the score is centred on the screen behind
+   this one, and collapse to nothing the moment the content is taller than
+   the screen, leaving it to scroll normally. */
+#settings-body {
+    max-width: 520px;
+    margin: auto;
+    padding: 32px 22px 64px;
+}
+
+
+#settings[hidden] {
+    display: none;
+}
+
+/* The combined grid stays on screen while the rows below it are tuned: it is
+   the panel's answer, and watching it move is the point of moving a slider. */
+#settings-pinned {
+    padding-bottom: 4px;
+}
+
+.tune-row {
+    border-bottom: 1px solid var(--line);
+}
+
+.tune-head {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 17px 0;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    text-align: left;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    /* Closed factors recede. The colour underneath is full strength and the
+       opacity does the dimming, so the resting blend lands about where --muted
+       used to and the fade between open and closed is a single property
+       rather than an interpolation between two greys. */
+    color: var(--fg);
+    opacity: .72;
+    transition: opacity var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+/* The accent grows along the row's own rule, so the open factor is marked by
+   the line it already sits on rather than by a colour change alone. */
+.tune-head::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 1px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--mid) var(--ease);
+}
+
+/* Reaching for a closed factor brings it back before you open it. */
+.tune-head:hover,
+.tune-head:focus-visible {
+    opacity: 1;
+    outline: none;
+}
+
+.tune-head[aria-expanded="true"] {
+    opacity: 1;
+}
+
+.tune-head[aria-expanded="true"]::after {
+    transform: scaleX(1);
+}
+
+/* Where the factor currently sits, so a closed row says something rather than
+   only naming itself. */
+.tune-at {
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: .04em;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+    /* One step up from --faint, because the row's own opacity takes it back
+       down again. A closed row still has to be readable: saying where the
+       factor sits is the reason the readout is there. */
+    color: var(--muted);
+    transition: color var(--fast) var(--ease);
+}
+
+.tune-head[aria-expanded="true"] .tune-at {
+    color: var(--accent);
+}
+
+/* Every body is held to the tallest of them, measured by settings.js, so
+   opening any row moves what follows by the same amount and the sheet, the
+   reset buttons and the controls below them all stay put. */
+.tune-body {
+    min-height: var(--body-height, auto);
+    /* Enough of a gap under the factor's own name that the first slider
+       reads as sitting inside it rather than running straight on from it. */
+    padding: 20px 0 28px;
+}
+
+.tune-body[hidden] {
+    display: none;
+}
+
+.tune-fields {
+    display: grid;
+    gap: 20px;
+}
+
+.setting {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 4px 12px;
+}
+
+.setting-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+/* The number is the thing being set, so it carries more size than the label
+   naming it — light and large, the way the score itself is set. */
+.setting-value {
+    font-size: 20px;
+    font-weight: 300;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+}
+
+.setting input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 20px;
+    margin: 0;
+    background: none;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.setting input[type="range"]:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 4px;
+}
+
+/* Only spaced when there are sliders above it; the combined section has none
+   and its chart sits directly under the tabs. */
+.tune-fields+.chart {
+    margin-top: 30px;
+}
+
+.chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 56px;
+    border-bottom: 1px solid var(--line);
+}
+
+.chart-bars i {
+    flex: 1;
+    min-width: 0;
+    height: 20%;
+    border-radius: 1px 1px 0 0;
+    transform-origin: bottom;
+    /* Short, so the curve keeps up with a slider being dragged. */
+    transition: height var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.chart-grid {
+    display: grid;
+    gap: 1px;
+    padding-bottom: 1px;
+    border-bottom: 1px solid var(--line);
+}
+
+.chart-grid i {
+    border-radius: 1px;
+}
+
+/* Wider than tall: 17 columns against 11 rows, and square cells would make
+   the map a block. The same ratio for every style, so switching between them
+   changes the drawing and not the height. */
+.chart-grid i {
+    aspect-ratio: 16 / 9;
+    transition: background var(--fast) var(--ease), opacity var(--fast) var(--ease);
+}
+
+/* Laid out on the grid's own tracks, so every label sits over the cell it
+   names. Both axes carry the grid's 1px gap for the same reason. */
+.chart-x {
+    display: grid;
+    gap: 1px;
+    margin-top: 6px;
+}
+
+.chart-x span {
+    justify-self: center;
+}
+
+.chart-y {
+    display: grid;
+    gap: 1px;
+    text-align: right;
+}
+
+.chart-y span {
+    align-self: center;
+}
+
+/* A chart draws itself in when its section comes into view — on opening the
+   sheet, and on switching to it. Keyed off those two states rather than run
+   on paint, so dragging a slider moves the bars without replaying the
+   entrance under the hand doing the dragging. */
+#settings.is-open .tune-body:not([hidden]) .chart-bars i {
+    animation: bar-rise var(--mid) var(--ease) backwards;
+    /* Staggered left to right, so the curve arrives as a sweep. */
+    animation-delay: calc(var(--i) * 6ms);
+}
+
+@keyframes bar-rise {
+    from {
+        transform: scaleY(0);
+        opacity: 0;
+    }
+}
+
+/* The pinned grid is never hidden, so this plays on opening the sheet. */
+#settings.is-open #settings-pinned .chart-grid i {
+    animation: cell-in var(--mid) var(--ease) backwards;
+    animation-delay: calc(var(--i) * 1.2ms);
+}
+
+@keyframes cell-in {
+    from {
+        transform: scale(.4);
+        opacity: 0;
+    }
+}
+
+/* The grid carries a second axis, so it keeps a gutter of labels beside it. */
+/* One grid holding the lot: the axis name, the values it is measured in, and
+   then a map per wind speed. Everything shares these tracks, which is what
+   keeps the axis down the left true for every map and each map's ticks true
+   for its own columns. settings.js sets the column count. Names carry --muted
+   and values --faint, so a glance reads what is shown before how much of it.
+
+   Row 1 names the maps, row 2 holds them, row 3 their ticks, row 4 the axis
+   name under all of them, row 5 the caption. */
+.chart-combined {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    column-gap: 8px;
+}
+
+.chart-combined .chart-grid {
+    grid-area: 2 / 3;
+}
+
+.chart-combined .chart-x {
+    grid-area: 3 / 3;
+}
+
+.chart-combined .chart-y-title {
+    grid-area: 2 / 1;
+    /* Turned to run up the axis it names, the way it is read. */
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    align-self: center;
+}
+
+.chart-combined .chart-y {
+    grid-area: 2 / 2;
+}
+
+.chart-combined .chart-x-title {
+    grid-row: 4;
+    grid-column: 3 / -1;
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* Under the map, not under the map plus its left gutter: spanning every track
+   would centre these on the chart's box and leave them sitting off to the left
+   of the thing they describe. */
+.chart-combined .chart-note {
+    grid-row: 5;
+    grid-column: 3;
+}
+
+/* Sits with the map, directly under the axis it swaps. */
+#settings-axes {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.chart-axes {
+    display: flex;
+    gap: 20px;
+}
+
+.chart-axis {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--fg);
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    cursor: pointer;
+    opacity: .4;
+    transition: opacity var(--fast) var(--ease);
+}
+
+.chart-axis:hover,
+.chart-axis:focus-visible,
+.chart-axis[aria-pressed="true"] {
+    opacity: 1;
+    outline: none;
+}
+
+.chart-x-title,
+.chart-y-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.chart-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+
+.chart-scale span,
+.chart-x span,
+.chart-y span,
+.chart-note {
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--faint);
+}
+
+.chart-note {
+    margin: 10px 0 0;
+    text-align: center;
+}
+
+#settings-resets {
+    display: flex;
+    justify-content: center;
+    gap: 26px;
+    margin-top: 24px;
+}
+
+#settings-reset,
+#settings-reset-all {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    cursor: pointer;
+    transition: color var(--fast) var(--ease);
+}
+
+/* Resetting everything is the rarer of the two, and says so. */
+#settings-reset-all {
+    color: var(--faint);
+}
+
+#settings-reset:hover,
+#settings-reset:focus-visible,
+#settings-reset-all:hover,
+#settings-reset-all:focus-visible {
+    color: var(--fg);
+    outline: none;
+}
+
+/* ============================================================
+   Settings · wide
+
+   Given the room, the map moves out beside the factors rather than
+   sitting on top of them, which is the only way it gets to be
+   bigger than the column of sliders. The breakpoint is where that
+   actually pays: below it the map comes out no wider than it
+   already is stacked, for the price of squeezing the sliders.
+
+   After the rules it overrides, not before them: these carry no
+   more weight than the stacked ones, so source order is what
+   settles it.
+   ============================================================ */
+
+@media (min-width: 1040px) {
+    #settings-body {
+        max-width: 1280px;
+        display: grid;
+        grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.4fr);
+        column-gap: 56px;
+        align-items: start;
+    }
+
+    /* Source order keeps the map first, so the stacked layout still opens
+       on it; here it is placed beside the factors instead. */
+    #settings-pinned {
+        grid-column: 2;
+        grid-row: 1;
+        padding-bottom: 0;
+    }
+
+    /* Nothing below it to be ruled off from, now that it is a column. */
+    #settings-axes {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: start;
+        padding-bottom: 0;
+        border-bottom: 0;
+    }
+
+    /* Spans both of the map's rows, so the factors can run past the map
+       without dragging the picker down the page after them. */
+    #settings-rows {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+    }
+
+    #settings-resets {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    /* Both columns start their content on the same line: the map at the top
+       of its box, so the first factor drops its header's top padding to
+       match. Stacked, that padding is what holds it off the map above. */
+    #settings-rows .tune-row:first-child .tune-head {
+        padding-top: 0;
+    }
+
+    /* Square at this size. The map has a column to fill rather than a strip
+       above one, and square cells make it as tall as the factors beside it
+       instead of leaving the right half of the screen empty. */
+    .chart-grid i {
+        aspect-ratio: 1;
+    }
 }
 
 /* ============================================================
@@ -595,4 +1146,26 @@ body {
     #app[data-state="loading"] #meter i {
         animation: none;
     }
+
+    /* The charts still recolour and resize, just without easing them. */
+    #settings,
+    .tune-head,
+    .tune-head::after,
+    .tune-at,
+    .chart-bars i,
+    .chart-grid i {
+        transition: none;
+    }
+
+    #settings.is-open .tune-body:not([hidden]) .chart-bars i,
+    #settings.is-open #settings-pinned .chart-grid i {
+        animation: none;
+    }
+
+    /* The sheet is placed rather than slid, so it still arrives on screen. */
+    #settings {
+        transform: none;
+        opacity: 1;
+    }
+
 }
